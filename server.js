@@ -155,6 +155,19 @@ wss.on('connection', (ws, req) => {
           dataUrl: msg.file.dataUrl,
         };
       }
+      // Validate optional mentions array (userIds, deduped, max 10, never self)
+      const mentions = [];
+      if (Array.isArray(msg.mentions)) {
+        const validIds = new Set(USERS.map((u) => u.id));
+        for (const id of msg.mentions) {
+          if (typeof id !== 'string') continue;
+          if (!validIds.has(id)) continue;
+          if (id === userId) continue; // can't mention yourself
+          if (mentions.includes(id)) continue;
+          mentions.push(id);
+          if (mentions.length >= 10) break;
+        }
+      }
       // Must have at least one of: text / image / file
       if (!text && !image && !file) return;
       const m = {
@@ -165,6 +178,7 @@ wss.on('connection', (ws, req) => {
       };
       if (image) m.image = image;
       if (file) m.file = file;
+      if (mentions.length) m.mentions = mentions;
       messages.push(m);
       if (messages.length > 200) messages.shift();
       broadcast({ type: 'message', message: m });

@@ -207,10 +207,25 @@
     border-color: rgba(22, 163, 74, 0.35);
     box-shadow: 0 8px 24px rgba(22, 163, 74, 0.18);
   }
+  /* Mention variant: when an unread message @-mentions the current user,
+     the bar borrows brand red instead of accent green. Mentions are urgent
+     and personal — different signal, different color. */
+  .chat-bar.has-notification.is-mention {
+    border-color: rgba(201, 0, 25, 0.45);
+    box-shadow: 0 8px 24px rgba(201, 0, 25, 0.22);
+  }
+  .chat-bar.has-notification.is-mention .dot {
+    background: var(--brand);
+    animation: pulseMention 1.6s ease-in-out infinite;
+  }
 
   @keyframes pulse {
     0%, 100% { box-shadow: 0 0 0 0 rgba(22, 163, 74, 0.55); }
     50%      { box-shadow: 0 0 0 6px rgba(22, 163, 74, 0); }
+  }
+  @keyframes pulseMention {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(201, 0, 25, 0.55); }
+    50%      { box-shadow: 0 0 0 6px rgba(201, 0, 25, 0); }
   }
   @keyframes barWiggle {
     0%, 100% { transform: translateX(0); }
@@ -925,6 +940,73 @@
 
   /* Backdrop area to close menu when clicking outside is handled in JS */
 
+  /* ---------- Mention popover (above composer when @ is typed) ---------- */
+  .mention-popover {
+    position: absolute;
+    bottom: calc(100% + 6px);
+    left: var(--space-l);
+    right: var(--space-l);
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    box-shadow: 0 10px 28px rgba(24, 27, 37, 0.16);
+    padding: var(--space-xs);
+    display: none;
+    flex-direction: column;
+    z-index: 30;
+    max-height: 220px;
+    overflow-y: auto;
+    animation: menuIn 140ms ease-out both;
+  }
+  .mention-popover.open { display: flex; }
+  .mention-item {
+    background: transparent;
+    border: none;
+    font-family: inherit;
+    font-size: var(--text-meta);
+    color: var(--text);
+    text-align: left;
+    min-height: 40px; /* tablet touch target */
+    padding: 0 var(--space-m);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: var(--space-m);
+    transition: background-color 120ms ease;
+    width: 100%;
+  }
+  .mention-item:hover,
+  .mention-item.active { background: var(--hover-bg); }
+  .mention-item .mention-avatar {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.2px;
+    flex-shrink: 0;
+  }
+  .mention-item .mname { flex: 1; font-weight: 500; }
+  .mention-item .mhandle { color: var(--muted-soft); font-size: var(--text-micro); }
+
+  /* Mention token inside bubbles — brand-colored chip, not green */
+  .mention {
+    color: var(--brand);
+    background: var(--brand-soft);
+    border-radius: var(--radius-xs);
+    padding: 0 4px;
+    font-weight: 600;
+  }
+  /* When the current user is the one mentioned, ring the bubble */
+  .bubble.you-mentioned {
+    border-color: rgba(201, 0, 25, 0.35);
+    background: var(--tk-primary-50);
+  }
+
   /* ---------- Pending attachment preview (above composer) ---------- */
   .composer-preview {
     border-top: 1px solid var(--border);
@@ -1263,6 +1345,8 @@
     messages = [];
     onlineUsers.clear();
     unreadCount = 0;
+    unreadHasMention = false;
+    pendingMentions.clear();
     connState = 'idle';
     clearTimeout(notificationTimer);
     setTitleNotification(false);
@@ -1278,6 +1362,11 @@
   let ws = null;
   let wsRetryTimer = null;
   let connState = 'idle';            // idle | connecting | online | offline
+  let unreadCount = 0;               // unread messages while bar is closed
+  let unreadHasMention = false;      // any unread message @-mentions me?
+  // Mentions the user has actively picked from the popover for the next send.
+  // Map<userId, name> — we only send IDs whose name still appears in the input.
+  const pendingMentions = new Map();
 
   function updateConnUI() {
     const el = document.getElementById('conn-state');
@@ -1322,6 +1411,7 @@
       } else if (msg.type === 'message' && msg.message) {
         messages.push(msg.message);
         const fromMe = msg.message.senderId === currentUserId;
+        const mentionsMe = Array.isArray(msg.message.mentions) && msg.message.mentions.includes(currentUserId);
         if (!fromMe) hapticReceived();
         if (current === STATE.MESSAGES) {
           // append in place
@@ -1337,15 +1427,22 @@
         } else if ((current === STATE.CLOSED || current === STATE.NOTIFICATION) && !fromMe) {
           // incoming msg while closed — light up notification
           unreadCount++;
+          if (mentionsMe) unreadHasMention = true;
+          // Mention escalates the haptic: error pattern (sharp, urgent) for
+          // "you specifically were called". Plain unread keeps warning.
+          const ping = mentionsMe ? hapticError : hapticNotification;
           if (current !== STATE.NOTIFICATION) {
             current = STATE.NOTIFICATION;
             setTitleNotification(true, unreadCount);
-            hapticNotification();
+            ping();
             render(); // first transition: full render mounts torph
           } else {
             setTitleNotification(true, unreadCount);
-            hapticNotification();
+            ping();
             torphUpdate('unread', unreadCount); // already mounted: animate digit
+            // bar element already exists — toggle is-mention class in place
+            const bar = document.getElementById('chat-bar');
+            if (bar && unreadHasMention) bar.classList.add('is-mention');
           }
         }
       } else if (msg.type === 'presence') {
@@ -1455,6 +1552,86 @@
   // Pending attachment to send with next message — { kind: 'image'|'file', name, mime, size, dataUrl }
   let pendingAttachment = null;
 
+  // ---------- Mention popover state ----------
+  // open: visible? items: filtered users, active: keyboard-highlighted index
+  // range: { start, end, query } the @-token currently being edited.
+  let mentionState = { open: false, items: [], active: 0, range: null };
+
+  // Detect a mention trigger at the cursor: an @ that follows start-of-input
+  // or whitespace, with no whitespace yet typed after it.
+  function findMentionTrigger(input) {
+    const cursor = input.selectionStart || 0;
+    const before = input.value.slice(0, cursor);
+    const m = before.match(/(?:^|\s)@([^\s@]*)$/);
+    if (!m) return null;
+    const query = m[1];
+    return { start: cursor - query.length - 1, end: cursor, query };
+  }
+
+  function closeMentionPopover() {
+    const pop = document.getElementById('mention-popover');
+    if (pop) { pop.classList.remove('open'); pop.innerHTML = ''; }
+    mentionState = { open: false, items: [], active: 0, range: null };
+  }
+
+  function renderMentionPopover() {
+    const pop = document.getElementById('mention-popover');
+    if (!pop || !mentionState.open) return;
+    pop.innerHTML = mentionState.items.map((u, i) => `
+      <button type="button" class="mention-item${i === mentionState.active ? ' active' : ''}"
+              data-uid="${u.id}" data-idx="${i}" role="option" aria-selected="${i === mentionState.active}">
+        <span class="mention-avatar" style="background:${u.bg};color:${u.fg}">${escapeHtml(u.initials)}</span>
+        <span class="mname">${escapeHtml(u.name)}</span>
+        <span class="mhandle">@${escapeHtml(u.id)}</span>
+      </button>
+    `).join('');
+    pop.classList.add('open');
+    pop.querySelectorAll('.mention-item').forEach((el) => {
+      el.addEventListener('mousedown', (e) => {
+        // mousedown (not click) so the input doesn't lose focus before we can
+        // reposition the cursor.
+        e.preventDefault();
+        const idx = Number(el.dataset.idx);
+        pickMention(idx);
+      });
+    });
+  }
+
+  function updateMentionPopover() {
+    const input = document.getElementById('composer-input');
+    if (!input) return;
+    const trig = findMentionTrigger(input);
+    if (!trig) return closeMentionPopover();
+    const q = trig.query.toLowerCase();
+    const items = USERS
+      .filter((u) => u.id !== currentUserId)
+      .filter((u) => !q || u.name.toLowerCase().includes(q) || u.id.toLowerCase().includes(q) || u.initials.toLowerCase().includes(q))
+      .slice(0, 6);
+    if (!items.length) return closeMentionPopover();
+    mentionState = { open: true, items, active: 0, range: trig };
+    renderMentionPopover();
+  }
+
+  function pickMention(index) {
+    if (!mentionState.open) return;
+    const u = mentionState.items[index];
+    if (!u) return;
+    const input = document.getElementById('composer-input');
+    if (!input) return;
+    const r = mentionState.range;
+    const before = input.value.slice(0, r.start);
+    const after = input.value.slice(r.end);
+    const insert = '@' + u.name + ' ';
+    input.value = before + insert + after;
+    const newCursor = before.length + insert.length;
+    input.setSelectionRange(newCursor, newCursor);
+    input.focus();
+    pendingMentions.set(u.id, u.name);
+    hapticClick();
+    closeMentionPopover();
+    updateComposerHasContent();
+  }
+
   function clearPendingAttachment() {
     pendingAttachment = null;
     const prev = document.getElementById('composer-preview');
@@ -1556,14 +1733,24 @@
         };
       }
     }
+    // Only send mention IDs that are actually still present in the text
+    // (user may have backspaced over a picked name). This keeps the rendered
+    // chip and the server-validated mention list in lockstep.
+    const mentions = [];
+    for (const [uid, name] of pendingMentions) {
+      if (trimmed.includes('@' + name)) mentions.push(uid);
+    }
+    if (mentions.length) payload.mentions = mentions;
     ws.send(JSON.stringify(payload));
     flyPlane();
     hapticSent();
     pendingAttachment = null;
+    pendingMentions.clear();
     const prev = document.getElementById('composer-preview');
     if (prev) { prev.hidden = true; prev.innerHTML = ''; }
     const input = document.getElementById('composer-input');
     if (input) input.value = '';
+    closeMentionPopover();
     updateComposerHasContent();
   }
 
@@ -1623,10 +1810,11 @@
           </button>
         </div>
         <div class="composer-preview" id="composer-preview" hidden></div>
+        <div class="mention-popover" id="mention-popover" role="listbox" aria-label="Bahsedilecek kişi"></div>
         <div class="composer" id="composer">
           <button type="button" class="plus" id="plus-btn" aria-label="Dosya ekle" aria-haspopup="menu" aria-expanded="false">+</button>
           <div class="input-wrap">
-            <input type="text" id="composer-input" placeholder="Mesajınızı yazın" autocomplete="off" />
+            <input type="text" id="composer-input" placeholder="Mesajınızı yazın · @ ile bahsedin" autocomplete="off" />
           </div>
           <button class="send" id="composer-send" aria-label="Gönder">
             <svg><use href="#icon-send"/></svg>
@@ -1694,11 +1882,15 @@
     // is the only nested real button — avoid nesting button roles to keep
     // the a11y tree clean. Title attribute is the lightweight tooltip;
     // unread count flows in for SR users when notification is active.
+    // Mention escalation: when an unread message @-mentioned the current user,
+    // the bar swaps to brand red — different signal, different color.
+    const isMention = hasNotification && unreadHasMention;
     const tip = hasNotification && unreadCount > 0
-      ? `${unreadCount} okunmamış mesaj — sohbeti aç`
+      ? (isMention ? `${unreadCount} okunmamış mesaj · sizden bahsedildi — sohbeti aç`
+                   : `${unreadCount} okunmamış mesaj — sohbeti aç`)
       : 'Sohbeti aç';
     return `
-      <div class="chat-bar ${hasNotification ? 'has-notification' : ''}" id="chat-bar" title="${tip}" aria-label="${tip}">
+      <div class="chat-bar ${hasNotification ? 'has-notification' : ''}${isMention ? ' is-mention' : ''}" id="chat-bar" title="${tip}" aria-label="${tip}">
         <div class="left">
           <span class="icon-wrap">
             <svg class="chat-icon"><use href="#icon-chat"/></svg>
@@ -1747,6 +1939,24 @@
     return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
   }
 
+  // Wrap @Name occurrences in a styled chip. Server-validated mentions are an
+  // array of userIds; for each, we replace literal "@<full name>" in the
+  // text with a brand-colored span. Names are escaped before the swap so
+  // user-typed HTML is never injected.
+  function renderMentionsInText(text, mentions) {
+    let html = escapeHtml(text || '');
+    if (!Array.isArray(mentions) || !mentions.length) return html;
+    for (const uid of mentions) {
+      const u = USER_BY_ID[uid];
+      if (!u) continue;
+      const target = '@' + escapeHtml(u.name);
+      const chip = `<span class="mention" data-uid="${uid}">${target}</span>`;
+      // simple split/join replaces every occurrence and avoids regex pitfalls
+      html = html.split(target).join(chip);
+    }
+    return html;
+  }
+
   function renderMessageItem(m) {
     const sender = USER_BY_ID[m.senderId] || USERS[0];
     const outgoing = m.senderId === currentUserId;
@@ -1779,7 +1989,11 @@
     }
     if (hasText || (!hasImage && !hasFile)) {
       // Text bubble; if accompanied by media, show without author label (already shown above first bubble)
-      parts.push(`<div class="bubble">${(!hasImage && !hasFile) ? authorHtml : ''}${escapeHtml(m.text || '')}</div>`);
+      // When the current user is mentioned, the bubble gets a soft brand-tinted ring.
+      const youMentioned = Array.isArray(m.mentions) && m.mentions.includes(currentUserId);
+      const bubbleCls = `bubble${youMentioned ? ' you-mentioned' : ''}`;
+      const renderedText = renderMentionsInText(m.text || '', m.mentions);
+      parts.push(`<div class="${bubbleCls}">${(!hasImage && !hasFile) ? authorHtml : ''}${renderedText}</div>`);
     }
     // Inject author into first bubble of media-only message
     let bubblesHtml = parts.join('');
@@ -1863,7 +2077,8 @@
         try {
           const data = await attemptLogin(userId, password);
           persistAuth(data.user, data.token);
-          messages = []; unreadCount = 0;
+          messages = []; unreadCount = 0; unreadHasMention = false;
+          pendingMentions.clear();
           hapticSuccess();
           setState(STATE.CLOSED);
           connectWS();
@@ -1895,6 +2110,7 @@
         } else if (current === STATE.NOTIFICATION) {
           hapticSuccess(); // satisfying "got it" feedback when opening unread
           unreadCount = 0;
+          unreadHasMention = false;
           setTitleNotification(false);
           setState(STATE.MESSAGES);
         }
@@ -1908,6 +2124,7 @@
         if (current === STATE.NOTIFICATION) {
           current = STATE.CLOSED;
           unreadCount = 0;
+          unreadHasMention = false;
           setTitleNotification(false);
           render();
         }
@@ -1944,8 +2161,48 @@
         if (next) next.focus();
       };
       sendBtn.addEventListener('click', submit);
-      input.addEventListener('input', updateComposerHasContent);
+      input.addEventListener('input', () => {
+        updateComposerHasContent();
+        updateMentionPopover();
+      });
+      input.addEventListener('keyup', (e) => {
+        // Cursor-only moves (arrows, home/end) don't fire 'input' — keep
+        // popover state in sync with where the caret actually is.
+        if (e.key === 'ArrowLeft' || e.key === 'ArrowRight' ||
+            e.key === 'Home' || e.key === 'End') {
+          updateMentionPopover();
+        }
+      });
+      input.addEventListener('blur', () => {
+        // small delay so a click on a mention item still registers
+        setTimeout(closeMentionPopover, 120);
+      });
       input.addEventListener('keydown', (e) => {
+        // When the mention popover is open, intercept navigation keys
+        if (mentionState.open) {
+          if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            mentionState.active = (mentionState.active + 1) % mentionState.items.length;
+            renderMentionPopover();
+            return;
+          }
+          if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            mentionState.active = (mentionState.active - 1 + mentionState.items.length) % mentionState.items.length;
+            renderMentionPopover();
+            return;
+          }
+          if (e.key === 'Enter' || e.key === 'Tab') {
+            e.preventDefault();
+            pickMention(mentionState.active);
+            return;
+          }
+          if (e.key === 'Escape') {
+            e.preventDefault();
+            closeMentionPopover();
+            return;
+          }
+        }
         if (e.key === 'Enter' && !e.shiftKey) {
           e.preventDefault();
           submit();
