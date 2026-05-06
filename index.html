@@ -10,16 +10,18 @@
 <!-- Takeoff UI (Turkish Technology design system) -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@takeoff-ui/core@0.11.4/dist/core/core.css">
 <script type="module" src="https://cdn.jsdelivr.net/npm/@takeoff-ui/core@0.11.4/dist/core/core.esm.js"></script>
-<!-- web-haptics: rich haptic feedback (intensity + audio fallback) -->
-<!-- torph: dependency-free animated text morph for live counters -->
+<!-- web-haptics: intensity-aware vibration on supporting devices (silent on desktop, per "ses yok" principle) -->
+<!-- torph:       dependency-free animated text morph for live counters (presence) -->
+
 <script type="module">
   import { WebHaptics, defaultPatterns } from 'https://esm.sh/web-haptics@0.0.6';
   import { TextMorph } from 'https://esm.sh/torph@0.0.9';
-  // Single shared haptics instance.
-  // debug:true enables the audio click fallback (essential on desktop & iOS,
-  // where navigator.vibrate is unsupported). showSwitch:false hides the
-  // built-in toggle label so we don't pollute the UI.
-  window.tkHaptics = new WebHaptics({ debug: true, showSwitch: false });
+  // Single shared haptics instance — silent (audio fallback off).
+  // The cabin brief: "calm, capable, quiet". Principle #1 in .impeccable.md
+  // says explicitly "ses yok" — notifications must not produce sound.
+  // Vibration on devices that support it is fine; on desktop it's a no-op,
+  // and that's the intended behavior here.
+  window.tkHaptics = new WebHaptics({ debug: false, showSwitch: false });
   window.tkPatterns = defaultPatterns;
   window.TKTextMorph = TextMorph;
   // Signal ready so anything that mounted before ESM loaded can flush queued haptics
@@ -223,30 +225,13 @@
     color: var(--text);
   }
 
-  /* Unread badge — torph animates the digit changes */
-  .bar-count {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 20px;
-    height: 20px;
-    padding: 0 6px;
-    margin-left: 6px;
-    border-radius: 999px;
-    background: var(--accent);
-    color: #fff;
-    font-size: 11px;
-    font-weight: 700;
-    line-height: 1;
-    letter-spacing: 0;
+  /* Live counters — tabular numerals so torph morphs don't shift width.
+     Color stays neutral: green is reserved for the "new/unread" state per
+     .impeccable.md ("yeşil sadece 'yeni' durumu için"). Presence is
+     always-on information, not a "new" signal. */
+  [data-tk-morph] {
     font-variant-numeric: tabular-nums;
-    vertical-align: middle;
-  }
-  /* Members presence count — discreet animated text */
-  .members-online {
-    font-variant-numeric: tabular-nums;
-    color: var(--accent);
-    font-weight: 600;
+    display: inline-block;
   }
 
   .chat-bar .close-btn {
@@ -255,8 +240,9 @@
     color: var(--muted);
     font-size: 20px;
     cursor: pointer;
-    width: 32px;
-    height: 32px;
+    width: 40px;          /* tablet touch target ≥40px (Principle #3) */
+    height: 40px;
+    margin: -6px;         /* hit-area expansion w/o changing bar height */
     line-height: 1;
     border-radius: var(--radius-sm);
     display: inline-flex;
@@ -323,7 +309,10 @@
     color: var(--muted);
     font-size: var(--text-caption);
     font-family: inherit;
-    padding: var(--space-xxs) var(--space-xs);
+    /* min-height: 40px ensures the row meets tablet touch target without
+       inflating the visual weight of this secondary caption text. */
+    min-height: 40px;
+    padding: 0 var(--space-xs);
     margin-left: calc(-1 * var(--space-xs));
     border-radius: var(--radius-sm);
     outline: none;
@@ -403,8 +392,8 @@
     font-size: 22px;
     cursor: pointer;
     line-height: 1;
-    width: 36px;
-    height: 36px;
+    width: 40px;          /* tablet touch target ≥40px (Principle #3) */
+    height: 40px;
     border-radius: var(--radius-sm);
     display: inline-flex;
     align-items: center;
@@ -562,11 +551,14 @@
     background: var(--card);
   }
   .composer .plus {
-    width: 28px;
-    height: 28px;
-    border-radius: 50%;
-    background: var(--bubble-bg);
-    border: 1px solid var(--border);
+    /* Visible disc stays small (28×28) for editorial restraint, but the
+       hit area extends to 40×40 via box-sizing+padding. The visible disc
+       is a ::before pseudo so the ring/icon align optically. */
+    position: relative;
+    width: 40px;          /* touch target ≥40px (Principle #3) */
+    height: 40px;
+    background: transparent;
+    border: none;
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -575,9 +567,20 @@
     flex-shrink: 0;
     cursor: pointer;
     padding: 0;
-    transition: background-color 120ms ease, color 120ms ease, border-color 120ms ease;
+    transition: color 120ms ease;
   }
-  .composer .plus:hover { background: var(--card); border-color: var(--border-strong); color: var(--text); }
+  .composer .plus::before {
+    content: '';
+    position: absolute;
+    inset: 6px;           /* (40 − 28) / 2 = 6 → 28×28 visible disc */
+    border-radius: 50%;
+    background: var(--bubble-bg);
+    border: 1px solid var(--border);
+    transition: background-color 120ms ease, border-color 120ms ease;
+  }
+  .composer .plus > * { position: relative; }
+  .composer .plus:hover { color: var(--text); }
+  .composer .plus:hover::before { background: var(--card); border-color: var(--border-strong); }
   .composer .plus:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
   .composer .input-wrap {
     flex: 1;
@@ -605,8 +608,8 @@
     border: none;
     color: var(--muted-soft);
     cursor: pointer;
-    width: 36px;
-    height: 36px;
+    width: 40px;          /* touch target ≥40px (Principle #3) */
+    height: 40px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -904,7 +907,10 @@
     font-size: var(--text-meta);
     color: var(--text);
     text-align: left;
-    padding: var(--space-m) var(--space-l);
+    /* min-height locks the row to a 40px tap target on tablet
+       (Principle #3) without bloating its visual weight. */
+    min-height: 40px;
+    padding: 0 var(--space-l);
     border-radius: var(--radius-sm);
     cursor: pointer;
     display: flex;
@@ -1092,8 +1098,8 @@
     background: transparent;
     border: none;
     color: var(--muted);
-    width: 36px;
-    height: 36px;
+    width: 40px;          /* touch target ≥40px (Principle #3) */
+    height: 40px;
     border-radius: var(--radius-sm);
     display: inline-flex;
     align-items: center;
@@ -1118,7 +1124,8 @@
     .chat-bar:hover { transform: none; }
     .composer.has-content .send:hover { transform: none; }
     .composer .send svg, .composer .input-wrap, .chat-bar .close-btn,
-    .chat-header .close-btn, .composer .plus, .composer .send { transition: none; }
+    .chat-header .close-btn, .composer .plus, .composer .plus::before,
+    .composer .send { transition: none; }
   }
 </style>
 </head>
@@ -1634,9 +1641,12 @@
   function renderMembersTrigger() {
     const onlineN = onlineUsers.size;
     const totalN = USERS.length;
+    // Presence is always-on info, not a "new" signal — kept in neutral
+    // text color (green is reserved for unread state per .impeccable.md).
+    // torph morphs the digits on connect/disconnect for calm continuity.
     return `
       <button type="button" class="members has-tooltip" id="members-trigger" aria-describedby="members-tooltip" aria-expanded="false">
-        <span class="members-online" data-tk-morph="online">${onlineN}</span>/<span data-tk-morph="total">${totalN}</span> kişi
+        <span data-tk-morph="online">${onlineN}</span>/<span data-tk-morph="total">${totalN}</span> kişi çevrimiçi
         ${renderTooltipInner()}
       </button>
     `;
@@ -1676,17 +1686,25 @@
   }
 
   function renderClosedBar(hasNotification) {
-    const badge = hasNotification && unreadCount > 0
-      ? `<span class="bar-count" data-tk-morph="unread" aria-label="${unreadCount} okunmamış mesaj">${unreadCount}</span>`
-      : '';
+    // Notification signal is intentionally subtle: green pulse on the dot,
+    // wiggle once, and the document title prefix. No inline numeric badge
+    // (Principle #2: "badge yok"). The aria-label carries the count for
+    // screen readers without adding visual decoration.
+    // The bar itself is the click target (open the panel). The close-btn
+    // is the only nested real button — avoid nesting button roles to keep
+    // the a11y tree clean. Title attribute is the lightweight tooltip;
+    // unread count flows in for SR users when notification is active.
+    const tip = hasNotification && unreadCount > 0
+      ? `${unreadCount} okunmamış mesaj — sohbeti aç`
+      : 'Sohbeti aç';
     return `
-      <div class="chat-bar ${hasNotification ? 'has-notification' : ''}" id="chat-bar">
+      <div class="chat-bar ${hasNotification ? 'has-notification' : ''}" id="chat-bar" title="${tip}" aria-label="${tip}">
         <div class="left">
           <span class="icon-wrap">
             <svg class="chat-icon"><use href="#icon-chat"/></svg>
             <span class="dot"></span>
           </span>
-          <span class="title">TK2070</span>${badge}
+          <span class="title">TK2070</span>
         </div>
         <button class="close-btn" id="close-bar" aria-label="Sohbeti kapat">×</button>
       </div>
