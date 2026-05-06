@@ -566,37 +566,40 @@
     background: var(--card);
   }
   .composer .plus {
-    /* Visible disc stays small (28×28) for editorial restraint, but the
-       hit area extends to 40×40 via box-sizing+padding. The visible disc
-       is a ::before pseudo so the ring/icon align optically. */
-    position: relative;
-    width: 40px;          /* touch target ≥40px (Principle #3) */
+    /* 40×40 hit area for accessible touch target (Principle #3),
+       28×28 visible circular disc inside via padding + border-radius
+       on the button itself — simpler and more reliable than a pseudo. */
+    width: 40px;
     height: 40px;
+    padding: 6px;             /* (40 − 28) / 2 = 6 */
     background: transparent;
     border: none;
     display: inline-flex;
     align-items: center;
     justify-content: center;
     color: var(--muted);
-    font-size: 18px;
     flex-shrink: 0;
     cursor: pointer;
-    padding: 0;
-    transition: color 120ms ease;
-  }
-  .composer .plus::before {
-    content: '';
-    position: absolute;
-    inset: 6px;           /* (40 − 28) / 2 = 6 → 28×28 visible disc */
     border-radius: 50%;
-    background: var(--bubble-bg);
-    border: 1px solid var(--border);
-    transition: background-color 120ms ease, border-color 120ms ease;
+    transition: background-color 140ms ease, color 140ms ease, transform 200ms ease;
   }
-  .composer .plus > * { position: relative; }
-  .composer .plus:hover { color: var(--text); }
-  .composer .plus:hover::before { background: var(--card); border-color: var(--border-strong); }
-  .composer .plus:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+  .composer .plus .plus-icon {
+    width: 18px;
+    height: 18px;
+    display: block;
+    transition: transform 200ms ease;
+  }
+  .composer .plus:hover {
+    background: var(--hover-bg);
+    color: var(--text);
+  }
+  .composer .plus:active {
+    transform: scale(0.94);
+  }
+  .composer .plus:focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 2px;
+  }
   .composer .input-wrap {
     flex: 1;
     display: flex;
@@ -953,12 +956,16 @@
     padding: var(--space-xs);
     display: none;
     flex-direction: column;
-    z-index: 30;
+    z-index: 20;
     max-height: 220px;
     overflow-y: auto;
     animation: menuIn 140ms ease-out both;
+    pointer-events: none;
   }
-  .mention-popover.open { display: flex; }
+  .mention-popover.open {
+    display: flex;
+    pointer-events: auto;
+  }
   .mention-item {
     background: transparent;
     border: none;
@@ -1075,14 +1082,14 @@
   .preview-remove:hover { color: var(--brand); background: var(--brand-soft); }
   .preview-remove svg { width: 16px; height: 16px; }
 
-  /* Plus button "open" state */
+  /* Plus button "open" state — icon rotates 45° to form an × (close affordance) */
   .composer .plus.is-open {
     background: var(--brand-soft);
     color: var(--brand);
-    border-color: var(--brand-soft);
+  }
+  .composer .plus.is-open .plus-icon {
     transform: rotate(45deg);
   }
-  .composer .plus { transition: background-color 120ms ease, color 120ms ease, border-color 120ms ease, transform 200ms ease; }
 
   /* ---------- File bubble (in messages) ---------- */
   .bubble.file-bubble {
@@ -1206,7 +1213,7 @@
     .chat-bar:hover { transform: none; }
     .composer.has-content .send:hover { transform: none; }
     .composer .send svg, .composer .input-wrap, .chat-bar .close-btn,
-    .chat-header .close-btn, .composer .plus, .composer .plus::before,
+    .chat-header .close-btn, .composer .plus, .composer .plus .plus-icon,
     .composer .send { transition: none; }
   }
 </style>
@@ -1249,6 +1256,10 @@
     <symbol id="icon-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
       <line x1="18" y1="6" x2="6" y2="18"/>
       <line x1="6" y1="6" x2="18" y2="18"/>
+    </symbol>
+    <symbol id="icon-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="12" y1="5" x2="12" y2="19"/>
+      <line x1="5" y1="12" x2="19" y2="12"/>
     </symbol>
     <symbol id="icon-download" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
       <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
@@ -1812,7 +1823,9 @@
         <div class="composer-preview" id="composer-preview" hidden></div>
         <div class="mention-popover" id="mention-popover" role="listbox" aria-label="Bahsedilecek kişi"></div>
         <div class="composer" id="composer">
-          <button type="button" class="plus" id="plus-btn" aria-label="Dosya ekle" aria-haspopup="menu" aria-expanded="false">+</button>
+          <button type="button" class="plus" id="plus-btn" aria-label="Dosya ekle" aria-haspopup="menu" aria-expanded="false">
+            <svg class="plus-icon" aria-hidden="true"><use href="#icon-plus"/></svg>
+          </button>
           <div class="input-wrap">
             <input type="text" id="composer-input" placeholder="Mesajınızı yazın · @ ile bahsedin" autocomplete="off" />
           </div>
