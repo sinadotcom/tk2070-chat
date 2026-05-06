@@ -15,8 +15,11 @@
 <script type="module">
   import { WebHaptics, defaultPatterns } from 'https://esm.sh/web-haptics@0.0.6';
   import { TextMorph } from 'https://esm.sh/torph@0.0.9';
-  // Single shared haptics instance (audio fallback enabled)
-  window.tkHaptics = new WebHaptics();
+  // Single shared haptics instance.
+  // debug:true enables the audio click fallback (essential on desktop & iOS,
+  // where navigator.vibrate is unsupported). showSwitch:false hides the
+  // built-in toggle label so we don't pollute the UI.
+  window.tkHaptics = new WebHaptics({ debug: true, showSwitch: false });
   window.tkPatterns = defaultPatterns;
   window.TKTextMorph = TextMorph;
   // Signal ready so anything that mounted before ESM loaded can flush queued haptics
@@ -1867,10 +1870,12 @@
     const bar = document.getElementById('chat-bar');
     if (bar) {
       bar.addEventListener('click', (e) => {
-        if (e.target.closest('#close-bar')) return;
+        if (e.target.closest('#close-bar')) { hapticClick(); return; }
         if (current === STATE.CLOSED) {
+          hapticClick();
           setState(messages.length ? STATE.MESSAGES : STATE.EMPTY);
         } else if (current === STATE.NOTIFICATION) {
+          hapticSuccess(); // satisfying "got it" feedback when opening unread
           unreadCount = 0;
           setTitleNotification(false);
           setState(STATE.MESSAGES);
