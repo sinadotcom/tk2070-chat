@@ -10,6 +10,18 @@
 <!-- Takeoff UI (Turkish Technology design system) -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@takeoff-ui/core@0.11.4/dist/core/core.css">
 <script type="module" src="https://cdn.jsdelivr.net/npm/@takeoff-ui/core@0.11.4/dist/core/core.esm.js"></script>
+<!-- web-haptics: rich haptic feedback (intensity + audio fallback) -->
+<!-- torph: dependency-free animated text morph for live counters -->
+<script type="module">
+  import { WebHaptics, defaultPatterns } from 'https://esm.sh/web-haptics@0.0.6';
+  import { TextMorph } from 'https://esm.sh/torph@0.0.9';
+  // Single shared haptics instance (audio fallback enabled)
+  window.tkHaptics = new WebHaptics();
+  window.tkPatterns = defaultPatterns;
+  window.TKTextMorph = TextMorph;
+  // Signal ready so anything that mounted before ESM loaded can flush queued haptics
+  window.dispatchEvent(new Event('tk-haptics-ready'));
+</script>
 <style>
   :root {
     /* Takeoff palette — Turkish Technology design system */
@@ -206,6 +218,32 @@
     font-size: 15px;
     letter-spacing: -0.005em;
     color: var(--text);
+  }
+
+  /* Unread badge — torph animates the digit changes */
+  .bar-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 6px;
+    margin-left: 6px;
+    border-radius: 999px;
+    background: var(--accent);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: 0;
+    font-variant-numeric: tabular-nums;
+    vertical-align: middle;
+  }
+  /* Members presence count — discreet animated text */
+  .members-online {
+    font-variant-numeric: tabular-nums;
+    color: var(--accent);
+    font-weight: 600;
   }
 
   .chat-bar .close-btn {
@@ -1293,14 +1331,17 @@
             current = STATE.NOTIFICATION;
             setTitleNotification(true, unreadCount);
             hapticNotification();
-            render();
+            render(); // first transition: full render mounts torph
           } else {
             setTitleNotification(true, unreadCount);
             hapticNotification();
+            torphUpdate('unread', unreadCount); // already mounted: animate digit
           }
         }
       } else if (msg.type === 'presence') {
         if (msg.online) onlineUsers.add(msg.userId); else onlineUsers.delete(msg.userId);
+        // Animate the online count via torph (instead of jump-cut)
+        torphUpdate('online', onlineUsers.size);
         // refresh tooltip dots if open / members element present
         const trigger = document.getElementById('members-trigger');
         if (trigger) {
@@ -1322,41 +1363,75 @@
     return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
   }
 
-  // Haptic Feedback — Vibration API
-  function haptic(pattern = [50]) {
-    if (!navigator.vibrate) return;
-    navigator.vibrate(pattern);
+  // Haptic Feedback — powered by web-haptics (intensity-aware + audio fallback)
+  // Falls back to navigator.vibrate if web-haptics hasn't loaded yet.
+  function haptic(presetOrPattern) {
+    try {
+      if (window.tkHaptics) {
+        window.tkHaptics.trigger(presetOrPattern);
+        return;
+      }
+    } catch {}
+    // Fallback: native Vibration API with simplified pattern
+    if (navigator.vibrate) {
+      const fallback = {
+        success: [30, 60, 40],
+        warning: [40, 100, 40],
+        error:   [40, 40, 40, 40, 40],
+        light:   [15],
+        medium:  [25],
+        heavy:   [35],
+        selection: [8],
+        nudge:   [80, 80, 50],
+      }[presetOrPattern] || [20];
+      navigator.vibrate(fallback);
+    }
   }
 
-  function hapticSent() {
-    // Light double-tap: message sent successfully
-    haptic([20, 40, 20]);
-  }
+  // Semantic helpers — each maps to a web-haptics preset matched to UX intent
+  function hapticSent()         { haptic('success'); }   // message left the device
+  function hapticReceived()     { haptic('nudge'); }     // gentle "look here" pull
+  function hapticNotification() { haptic('warning'); }   // unread alert in closed bar
+  function hapticClick()        { haptic('selection'); } // subtle UI tap
+  function hapticSuccess()      { haptic('success'); }   // login / ws connected
+  function hapticError()        { haptic('error'); }     // login fail / ws error
 
-  function hapticReceived() {
-    // Medium pulse: new message received
-    haptic([30, 50, 30]);
+  // Torph — animated text morph for live counters (unread badge, presence count)
+  // Re-uses controllers keyed by data-tk-morph so digits *morph* between values
+  // instead of jumping. Falls back gracefully if torph hasn't loaded yet.
+  const torphControllers = new Map(); // key -> { el, morph }
+  function mountTorph() {
+    const TM = window.TKTextMorph;
+    if (!TM) return; // ESM not yet ready — render() will call again
+    document.querySelectorAll('[data-tk-morph]').forEach((el) => {
+      const key = el.getAttribute('data-tk-morph');
+      const existing = torphControllers.get(key);
+      if (existing && existing.el === el) return; // already attached to this node
+      // Detach any previous controller bound to a stale node
+      if (existing) { try { existing.morph.destroy(); } catch {} }
+      try {
+        const morph = new TM({
+          element: el,
+          duration: 380,
+          ease: { stiffness: 220, damping: 22, mass: 1 },
+          scale: true,
+          respectReducedMotion: true,
+        });
+        torphControllers.set(key, { el, morph });
+      } catch {}
+    });
   }
-
-  function hapticNotification() {
-    // Strong alert: notification alert
-    haptic([50, 100, 50]);
+  function torphUpdate(key, value) {
+    const c = torphControllers.get(key);
+    if (c && c.morph) {
+      try { c.morph.update(String(value)); return; } catch {}
+    }
+    // Fallback: write text directly
+    const el = document.querySelector(`[data-tk-morph="${key}"]`);
+    if (el) el.textContent = String(value);
   }
-
-  function hapticClick() {
-    // Subtle click feedback
-    haptic([10, 20, 10]);
-  }
-
-  function hapticSuccess() {
-    // Success pattern: login, connection established
-    haptic([30, 20, 30, 20, 30]);
-  }
-
-  function hapticError() {
-    // Error pattern: connection lost, validation error
-    haptic([100, 50, 100]);
-  }
+  // If web-haptics module finishes loading after first render, mount counters then
+  window.addEventListener('tk-haptics-ready', mountTorph);
 
   function flyPlane() {
     const sendBtn = document.getElementById('composer-send');
@@ -1554,9 +1629,11 @@
   }
 
   function renderMembersTrigger() {
+    const onlineN = onlineUsers.size;
+    const totalN = USERS.length;
     return `
       <button type="button" class="members has-tooltip" id="members-trigger" aria-describedby="members-tooltip" aria-expanded="false">
-        5 kişi
+        <span class="members-online" data-tk-morph="online">${onlineN}</span>/<span data-tk-morph="total">${totalN}</span> kişi
         ${renderTooltipInner()}
       </button>
     `;
@@ -1596,6 +1673,9 @@
   }
 
   function renderClosedBar(hasNotification) {
+    const badge = hasNotification && unreadCount > 0
+      ? `<span class="bar-count" data-tk-morph="unread" aria-label="${unreadCount} okunmamış mesaj">${unreadCount}</span>`
+      : '';
     return `
       <div class="chat-bar ${hasNotification ? 'has-notification' : ''}" id="chat-bar">
         <div class="left">
@@ -1603,7 +1683,7 @@
             <svg class="chat-icon"><use href="#icon-chat"/></svg>
             <span class="dot"></span>
           </span>
-          <span class="title">TK2070</span>
+          <span class="title">TK2070</span>${badge}
         </div>
         <button class="close-btn" id="close-bar" aria-label="Sohbeti kapat">×</button>
       </div>
@@ -1728,6 +1808,9 @@
   // ---------- Render & wire events ----------
   function render() {
     document.body.classList.toggle('is-login', current === STATE.LOGIN);
+    // innerHTML replacement detaches all torph nodes — drop stale controllers
+    torphControllers.forEach(({ morph }) => { try { morph.destroy(); } catch {} });
+    torphControllers.clear();
     if (current === STATE.LOGIN) {
       root.innerHTML = renderLogin();
     } else if (current === STATE.CLOSED) {
@@ -1739,6 +1822,8 @@
     } else if (current === STATE.MESSAGES) {
       root.innerHTML = renderMessages();
     }
+    // Mount torph on any [data-tk-morph] elements introduced by this render
+    mountTorph();
 
     // Login form events
     const form = document.getElementById('login-form');
