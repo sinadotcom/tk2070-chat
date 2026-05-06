@@ -1217,6 +1217,31 @@
     .chat-header .close-btn, .composer .plus, .composer .plus .plus-icon,
     .composer .send { transition: none; }
   }
+
+  /* ---------- Easter egg: monkey rain ---------- */
+  .monkey-rain {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 9999;
+    overflow: hidden;
+  }
+  .monkey-drop {
+    position: absolute;
+    top: -80px;
+    font-size: 32px;
+    line-height: 1;
+    animation: monkeyFall var(--fall-dur, 1.2s) var(--fall-delay, 0s) cubic-bezier(0.4, 0, 1, 1) both;
+    user-select: none;
+  }
+  @keyframes monkeyFall {
+    0%   { transform: translateY(0) rotate(0deg); opacity: 1; }
+    80%  { opacity: 1; }
+    100% { transform: translateY(110vh) rotate(var(--fall-spin, 30deg)); opacity: 0; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .monkey-drop { animation: none; opacity: 0; }
+  }
 </style>
 </head>
 <body>
@@ -1373,6 +1398,8 @@
   const onlineUsers = new Set();
   let ws = null;
   let wsRetryTimer = null;
+  let eggClicks = 0;                 // easter egg: consecutive chat-icon clicks
+  let eggTimer = null;
   let connState = 'idle';            // idle | connecting | online | offline
   let unreadCount = 0;               // unread messages while bar is closed
   let unreadHasMention = false;      // any unread message @-mentions me?
@@ -2054,6 +2081,31 @@
     `;
   }
 
+  // ---------- Easter egg ----------
+  function triggerMonkeyRain() {
+    if (window.tkHaptics) window.tkHaptics.trigger('error');
+    const rain = document.createElement('div');
+    rain.className = 'monkey-rain';
+    document.body.appendChild(rain);
+    const monkeys = ['🐒', '🙈', '🙉', '🙊'];
+    const count = 28;
+    for (let i = 0; i < count; i++) {
+      const el = document.createElement('span');
+      el.className = 'monkey-drop';
+      el.textContent = monkeys[Math.floor(Math.random() * monkeys.length)];
+      const left = Math.random() * 96 + 1;
+      const dur = (0.9 + Math.random() * 0.8).toFixed(2);
+      const delay = (Math.random() * 0.8).toFixed(2);
+      const spin = (Math.random() * 120 - 60).toFixed(1);
+      el.style.setProperty('--fall-dur', `${dur}s`);
+      el.style.setProperty('--fall-delay', `${delay}s`);
+      el.style.setProperty('--fall-spin', `${spin}deg`);
+      el.style.left = `${left}%`;
+      rain.appendChild(el);
+    }
+    setTimeout(() => rain.remove(), 2400);
+  }
+
   // ---------- Render & wire events ----------
   function render() {
     document.body.classList.toggle('is-login', current === STATE.LOGIN);
@@ -2149,6 +2201,22 @@
     if (closePanel) {
       closePanel.addEventListener('click', () => {
         setState(STATE.CLOSED);
+      });
+    }
+
+    // Easter egg: click the chat icon 6 times → monkey rain 🙈🙉🙊
+    const chatIcon = document.querySelector('.chat-header .title-row svg.chat-icon');
+    if (chatIcon) {
+      chatIcon.style.cursor = 'pointer';
+      chatIcon.addEventListener('click', () => {
+        eggClicks++;
+        clearTimeout(eggTimer);
+        if (eggClicks >= 6) {
+          eggClicks = 0;
+          triggerMonkeyRain();
+        } else {
+          eggTimer = setTimeout(() => { eggClicks = 0; }, 1200);
+        }
       });
     }
 
