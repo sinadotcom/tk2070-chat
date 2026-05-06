@@ -1246,7 +1246,7 @@
     connState = 'connecting'; updateConnUI();
     const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
     ws = new WebSocket(`${proto}//${location.host}/ws?token=${encodeURIComponent(token)}`);
-    ws.addEventListener('open', () => { connState = 'online'; updateConnUI(); });
+    ws.addEventListener('open', () => { connState = 'online'; hapticSuccess(); updateConnUI(); });
     ws.addEventListener('close', () => {
       connState = 'offline'; updateConnUI();
       // Auto-reconnect with backoff (only if still authenticated)
@@ -1255,7 +1255,7 @@
         wsRetryTimer = setTimeout(connectWS, 1500);
       }
     });
-    ws.addEventListener('error', () => { /* close handler will fire */ });
+    ws.addEventListener('error', () => { hapticError(); /* close handler will fire */ });
     ws.addEventListener('message', (e) => {
       let msg; try { msg = JSON.parse(e.data); } catch { return; }
       if (msg.type === 'error' && msg.error === 'auth') {
@@ -1274,6 +1274,7 @@
       } else if (msg.type === 'message' && msg.message) {
         messages.push(msg.message);
         const fromMe = msg.message.senderId === currentUserId;
+        if (!fromMe) hapticReceived();
         if (current === STATE.MESSAGES) {
           // append in place
           const body = document.getElementById('chat-body');
@@ -1291,9 +1292,11 @@
           if (current !== STATE.NOTIFICATION) {
             current = STATE.NOTIFICATION;
             setTitleNotification(true, unreadCount);
+            hapticNotification();
             render();
           } else {
             setTitleNotification(true, unreadCount);
+            hapticNotification();
           }
         }
       } else if (msg.type === 'presence') {
@@ -1317,6 +1320,42 @@
   function nowTime() {
     const d = new Date();
     return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+  }
+
+  // Haptic Feedback — Vibration API
+  function haptic(pattern = [50]) {
+    if (!navigator.vibrate) return;
+    navigator.vibrate(pattern);
+  }
+
+  function hapticSent() {
+    // Light double-tap: message sent successfully
+    haptic([20, 40, 20]);
+  }
+
+  function hapticReceived() {
+    // Medium pulse: new message received
+    haptic([30, 50, 30]);
+  }
+
+  function hapticNotification() {
+    // Strong alert: notification alert
+    haptic([50, 100, 50]);
+  }
+
+  function hapticClick() {
+    // Subtle click feedback
+    haptic([10, 20, 10]);
+  }
+
+  function hapticSuccess() {
+    // Success pattern: login, connection established
+    haptic([30, 20, 30, 20, 30]);
+  }
+
+  function hapticError() {
+    // Error pattern: connection lost, validation error
+    haptic([100, 50, 100]);
   }
 
   function flyPlane() {
@@ -1434,6 +1473,7 @@
     }
     ws.send(JSON.stringify(payload));
     flyPlane();
+    hapticSent();
     pendingAttachment = null;
     const prev = document.getElementById('composer-preview');
     if (prev) { prev.hidden = true; prev.innerHTML = ''; }
@@ -1718,9 +1758,11 @@
           const data = await attemptLogin(userId, password);
           persistAuth(data.user, data.token);
           messages = []; unreadCount = 0;
+          hapticSuccess();
           setState(STATE.CLOSED);
           connectWS();
         } catch (err) {
+          hapticError();
           errEl.textContent = err.message || 'Giriş yapılamadı.';
           errEl.hidden = false;
           submitBtn.disabled = false;
@@ -1788,6 +1830,7 @@
       const submit = () => {
         const val = input.value;
         if (!val.trim() && !pendingAttachment) return;
+        hapticClick();
         sendMessage(val);
         const next = document.getElementById('composer-input');
         if (next) next.focus();
@@ -1823,6 +1866,7 @@
       };
       plusBtn.addEventListener('click', (e) => {
         e.stopPropagation();
+        hapticClick();
         if (menu.classList.contains('open')) closeMenu(); else openMenu();
       });
       // Close on outside click
@@ -1837,6 +1881,7 @@
       // Menu items
       menu.querySelectorAll('.menu-item').forEach(item => {
         item.addEventListener('click', () => {
+          hapticClick();
           const action = item.dataset.action;
           closeMenu();
           if (action === 'photo') filePhoto?.click();
@@ -1849,14 +1894,20 @@
     if (filePhoto) {
       filePhoto.addEventListener('change', (e) => {
         const f = e.target.files?.[0];
-        if (f) handleFileSelected(f, 'image');
+        if (f) {
+          hapticClick();
+          handleFileSelected(f, 'image');
+        }
         e.target.value = ''; // allow same file re-select
       });
     }
     if (fileDoc) {
       fileDoc.addEventListener('change', (e) => {
         const f = e.target.files?.[0];
-        if (f) handleFileSelected(f, 'file');
+        if (f) {
+          hapticClick();
+          handleFileSelected(f, 'file');
+        }
         e.target.value = '';
       });
     }
@@ -1874,10 +1925,12 @@
       trigger.addEventListener('click', (e) => {
         if (e.target.closest('#logout-link')) {
           e.stopPropagation();
+          hapticClick();
           logout();
           return;
         }
         e.stopPropagation();
+        hapticClick();
         const expanded = trigger.getAttribute('aria-expanded') === 'true';
         trigger.setAttribute('aria-expanded', String(!expanded));
       });
