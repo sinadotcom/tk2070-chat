@@ -14,6 +14,7 @@ const USERS = [
 const PUBLIC_USERS = USERS.map(({ password, ...rest }) => rest);
 
 const messages = []; // in-memory message log (last 200)
+const notes = [];    // in-memory flight notes (last 100)
 const sessions = new Map(); // token -> userId
 
 const makeId = () => Math.random().toString(36).slice(2) + Date.now().toString(36);
@@ -125,8 +126,8 @@ wss.on('connection', (ws, req) => {
   }
   ws.userId = userId;
 
-  // send history snapshot to the new client
-  try { ws.send(JSON.stringify({ type: 'history', messages })); } catch {}
+  // send history snapshot to the new client (messages + flight notes)
+  try { ws.send(JSON.stringify({ type: 'history', messages, notes })); } catch {}
 
   // announce presence
   broadcast({ type: 'presence', userId, online: true });
@@ -168,6 +169,22 @@ wss.on('connection', (ws, req) => {
           if (mentions.length >= 10) break;
         }
       }
+      // Validate optional replyTo (id of a message that still exists)
+      let replyTo = null;
+      if (typeof msg.replyTo === 'string') {
+        const parent = messages.find((x) => x.id === msg.replyTo);
+        if (parent) {
+          replyTo = {
+            id: parent.id,
+            senderId: parent.senderId,
+            // small snippet — enough to render a quote without re-sending images
+            text: (parent.text || '').slice(0, 140),
+            hasImage: !!parent.image,
+            hasFile: !!parent.file,
+            fileName: parent.file ? parent.file.name : undefined,
+          };
+        }
+      }
       // Must have at least one of: text / image / file
       if (!text && !image && !file) return;
       const m = {
@@ -179,11 +196,50 @@ wss.on('connection', (ws, req) => {
       if (image) m.image = image;
       if (file) m.file = file;
       if (mentions.length) m.mentions = mentions;
+      if (replyTo) m.replyTo = replyTo;
       messages.push(m);
       if (messages.length > 200) messages.shift();
       broadcast({ type: 'message', message: m });
     } else if (msg.type === 'typing') {
       broadcast({ type: 'typing', userId, on: !!msg.on }, ws);
+    } else if (msg.type === 'pin') {
+      // Toggle the `pinned` flag on a message. Anyone in the flight can pin.
+      const id = typeof msg.id === 'string' ? msg.id : null;
+      if (!id) return;
+      const m = messages.find((x) => x.id === id);
+      if (!m) return;
+      const next = !m.pinned;
+      m.pinned = next;
+      if (next) {
+        m.pinnedBy = userId;
+        m.pinnedAt = Date.now();
+      } else {
+        delete m.pinnedBy;
+        delete m.pinnedAt;
+      }
+      broadcast({ type: 'pin', id, pinned: next, pinnedBy: m.pinnedBy || null });
+    } else if (msg.type === 'note:add') {
+      const text = (typeof msg.text === 'string') ? msg.text.trim().slice(0, 500) : '';
+      if (!text) return;
+      const n = {
+        id: makeId(),
+        authorId: userId,
+        text,
+        time: nowTime(),
+        createdAt: Date.now(),
+      };
+      notes.push(n);
+      if (notes.length > 100) notes.shift();
+      broadcast({ type: 'note:add', note: n });
+    } else if (msg.type === 'note:remove') {
+      const id = typeof msg.id === 'string' ? msg.id : null;
+      if (!id) return;
+      const idx = notes.findIndex((n) => n.id === id);
+      if (idx < 0) return;
+      // Only the author can remove their own note
+      if (notes[idx].authorId !== userId) return;
+      notes.splice(idx, 1);
+      broadcast({ type: 'note:remove', id });
     }
   });
 

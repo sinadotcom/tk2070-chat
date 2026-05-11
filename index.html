@@ -1218,6 +1218,428 @@
     .composer .send { transition: none; }
   }
 
+  /* ---------- Notes (flight notes panel + overlay) ---------- */
+  .notes-toggle {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-family: inherit;
+    font-size: var(--text-caption);
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0 12px;
+    height: 32px;
+    border-radius: 999px;
+    cursor: pointer;
+    transition: color 140ms ease, background-color 140ms ease, border-color 140ms ease;
+    flex-shrink: 0;
+  }
+  .notes-toggle svg { width: 14px; height: 14px; }
+  .notes-toggle:hover {
+    color: var(--text);
+    background: var(--hover-bg);
+    border-color: var(--border-strong);
+  }
+  .notes-toggle:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+  .notes-toggle .notes-count {
+    background: var(--brand-soft);
+    color: var(--brand);
+    font-variant-numeric: tabular-nums;
+    padding: 1px 6px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1.4;
+  }
+  .notes-toggle[aria-pressed="true"] {
+    color: var(--brand);
+    background: var(--brand-soft);
+    border-color: rgba(201, 0, 25, 0.25);
+  }
+
+  /* Notes view (replaces .chat-body content when active) */
+  .notes-view {
+    flex: 1;
+    overflow-y: auto;
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    background: var(--bg);
+  }
+  .notes-intro {
+    padding: var(--space-l) var(--space-l);
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    color: var(--muted);
+    font-size: var(--text-meta);
+    line-height: 1.5;
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-m);
+  }
+  .notes-intro svg {
+    width: 18px;
+    height: 18px;
+    color: var(--brand);
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+  .notes-intro strong {
+    color: var(--text);
+    font-weight: 600;
+    display: block;
+    margin-bottom: 2px;
+  }
+  .note-item {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--brand);
+    border-radius: var(--radius-md);
+    padding: var(--space-m) var(--space-l);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    animation: noteIn 220ms ease-out both;
+  }
+  @keyframes noteIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .note-item { animation: none; }
+  }
+  .note-head {
+    display: flex;
+    align-items: center;
+    gap: var(--space-s);
+    font-size: var(--text-caption);
+  }
+  .note-avatar {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.2px;
+    flex-shrink: 0;
+  }
+  .note-author {
+    font-weight: 600;
+    color: var(--text);
+  }
+  .note-time {
+    color: var(--muted-soft);
+    font-size: var(--text-micro);
+    font-variant-numeric: tabular-nums;
+  }
+  .note-remove {
+    margin-left: auto;
+    background: transparent;
+    border: none;
+    color: var(--muted-soft);
+    cursor: pointer;
+    width: 28px;
+    height: 28px;
+    border-radius: var(--radius-sm);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 120ms ease, background-color 120ms ease;
+  }
+  .note-remove svg { width: 14px; height: 14px; }
+  .note-remove:hover { color: var(--brand); background: var(--brand-soft); }
+  .note-remove:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+  .note-text {
+    font-size: var(--text-body-sz);
+    line-height: 1.5;
+    color: var(--text-body);
+    white-space: pre-wrap;
+    word-wrap: break-word;
+  }
+  .notes-empty {
+    margin: auto;
+    text-align: center;
+    color: var(--muted);
+    font-size: var(--text-meta);
+    line-height: 1.6;
+    padding: var(--space-2xl);
+    max-width: 28ch;
+  }
+  .notes-empty svg {
+    width: 32px;
+    height: 32px;
+    color: var(--muted-soft);
+    margin-bottom: var(--space-m);
+  }
+  .notes-empty strong {
+    color: var(--text);
+    font-weight: 600;
+    display: block;
+    margin-bottom: 4px;
+  }
+
+  /* Notes composer (different placeholder & accent than message composer) */
+  .composer.is-notes .send {
+    color: var(--brand);
+    background: var(--brand-soft);
+  }
+
+  /* ---------- Pinned bar (top of chat body, sticky-ish) ---------- */
+  .pinned-bar {
+    flex-shrink: 0;
+    background: var(--bubble-bg);
+    border-bottom: 1px solid var(--border);
+    overflow: hidden;
+    transition: max-height 220ms ease;
+  }
+  .pinned-bar-head {
+    display: flex;
+    align-items: center;
+    gap: var(--space-s);
+    width: 100%;
+    border: none;
+    background: transparent;
+    color: var(--muted);
+    font-family: inherit;
+    font-size: var(--text-caption);
+    font-weight: 600;
+    padding: var(--space-s) var(--space-l);
+    cursor: pointer;
+    text-align: left;
+    min-height: 36px;
+    transition: color 120ms ease, background-color 120ms ease;
+  }
+  .pinned-bar-head:hover { color: var(--text); background: var(--hover-bg); }
+  .pinned-bar-head:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: -2px; }
+  .pinned-bar-head svg.pin-icon { width: 14px; height: 14px; color: var(--brand); }
+  .pinned-bar-head .pinned-count {
+    color: var(--brand);
+    font-variant-numeric: tabular-nums;
+  }
+  .pinned-bar-head svg.chev {
+    width: 14px;
+    height: 14px;
+    margin-left: auto;
+    color: var(--muted-soft);
+    transition: transform 200ms ease;
+  }
+  .pinned-bar.open .pinned-bar-head svg.chev { transform: rotate(180deg); }
+  .pinned-list {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 220ms ease;
+  }
+  .pinned-bar.open .pinned-list {
+    max-height: 200px;
+    overflow-y: auto;
+  }
+  .pinned-item {
+    width: 100%;
+    border: none;
+    background: transparent;
+    text-align: left;
+    padding: var(--space-s) var(--space-l) var(--space-s) calc(var(--space-l) + 6px);
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    cursor: pointer;
+    border-left: 3px solid var(--brand);
+    border-radius: 0;
+    font-family: inherit;
+    transition: background-color 120ms ease;
+    min-height: 40px; /* touch target */
+  }
+  .pinned-item + .pinned-item { border-top: 1px solid var(--border); }
+  .pinned-item:hover { background: var(--hover-bg); }
+  .pinned-item:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: -2px; }
+  .pinned-item .pinned-author {
+    font-size: var(--text-micro);
+    font-weight: 600;
+    color: var(--brand);
+  }
+  .pinned-item .pinned-preview {
+    font-size: var(--text-caption);
+    color: var(--text-body);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    line-height: 1.3;
+  }
+  .pinned-item .pinned-preview em {
+    color: var(--muted);
+    font-style: normal;
+  }
+
+  /* Pinned bubble indicator */
+  .bubble-wrap.is-pinned > .bubble,
+  .bubble-wrap.is-pinned > .bubble.image,
+  .bubble-wrap.is-pinned > .bubble.file-bubble {
+    position: relative;
+  }
+  .pin-marker {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: var(--brand);
+    color: #fff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 6px rgba(201, 0, 25, 0.32);
+    z-index: 2;
+  }
+  .pin-marker svg { width: 10px; height: 10px; }
+
+  /* Flash highlight when jumping to a message */
+  @keyframes flashTarget {
+    0%   { background: var(--brand-soft); box-shadow: 0 0 0 4px var(--brand-soft); }
+    100% { background: transparent;       box-shadow: 0 0 0 0 transparent; }
+  }
+  .message.is-flash > .bubble-wrap > .bubble {
+    animation: flashTarget 1.4s ease-out;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .message.is-flash > .bubble-wrap > .bubble { animation: none; }
+  }
+
+  /* ---------- Message hover actions (pin, reply) ---------- */
+  .message { position: relative; }
+  .msg-actions {
+    position: absolute;
+    top: -8px;
+    display: none;
+    align-items: center;
+    gap: 2px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 2px;
+    box-shadow: 0 4px 12px rgba(24, 27, 37, 0.10);
+    z-index: 3;
+  }
+  .message.incoming .msg-actions { left: 44px; }
+  .message.outgoing .msg-actions { right: 44px; }
+  .message:hover .msg-actions,
+  .message.is-acting .msg-actions { display: inline-flex; }
+  .msg-action-btn {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    color: var(--muted);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 120ms ease, background-color 120ms ease;
+  }
+  .msg-action-btn svg { width: 14px; height: 14px; }
+  .msg-action-btn:hover { color: var(--brand); background: var(--brand-soft); }
+  .msg-action-btn:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 1px; }
+  .msg-action-btn.is-pinned { color: var(--brand); background: var(--brand-soft); }
+
+  /* ---------- Reply quote (inside bubble & composer preview) ---------- */
+  .reply-quote {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    background: var(--bubble-bg);
+    border-left: 3px solid var(--brand);
+    border-radius: var(--radius-xs);
+    padding: 6px 10px;
+    margin-bottom: 6px;
+    cursor: pointer;
+    max-width: 240px;
+    transition: background-color 120ms ease;
+  }
+  .reply-quote:hover { background: var(--hover-bg); }
+  .reply-quote .rq-author {
+    font-size: var(--text-micro);
+    font-weight: 600;
+    color: var(--brand);
+  }
+  .reply-quote .rq-text {
+    font-size: var(--text-caption);
+    color: var(--muted);
+    line-height: 1.4;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    word-wrap: break-word;
+  }
+  .reply-quote .rq-text em {
+    font-style: normal;
+    color: var(--muted-soft);
+  }
+
+  /* Composer reply preview (above the input row) */
+  .composer-reply {
+    border-top: 1px solid var(--border);
+    padding: var(--space-s) var(--space-l);
+    display: flex;
+    align-items: center;
+    gap: var(--space-m);
+    background: var(--bubble-bg);
+  }
+  .composer-reply[hidden] { display: none; }
+  .composer-reply .reply-bar {
+    width: 3px;
+    align-self: stretch;
+    background: var(--brand);
+    border-radius: 2px;
+    flex-shrink: 0;
+  }
+  .composer-reply .reply-meta {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .composer-reply .reply-label {
+    font-size: var(--text-micro);
+    color: var(--brand);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .composer-reply .reply-snippet {
+    font-size: var(--text-meta);
+    color: var(--text-body);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .composer-reply .reply-cancel {
+    background: transparent;
+    border: none;
+    color: var(--muted);
+    cursor: pointer;
+    width: 28px;
+    height: 28px;
+    border-radius: var(--radius-sm);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: color 120ms ease, background-color 120ms ease;
+  }
+  .composer-reply .reply-cancel:hover { color: var(--brand); background: var(--brand-soft); }
+  .composer-reply .reply-cancel svg { width: 16px; height: 16px; }
+
   /* ---------- Easter egg: monkey rain ---------- */
   .monkey-rain {
     position: fixed;
@@ -1297,6 +1719,30 @@
       <circle cx="16" cy="13" r="5" fill="#181b25"/>
       <path d="M5 30c2-5 6-8 11-8s9 3 11 8" fill="#181b25"/>
       <rect x="13" y="20" width="6" height="3" fill="#c90019"/>
+    </symbol>
+    <symbol id="icon-pin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="12" y1="17" x2="12" y2="22"/>
+      <path d="M5 17h14l-2-4V5l1-2H6l1 2v8l-2 4Z"/>
+    </symbol>
+    <symbol id="icon-reply" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="9 17 4 12 9 7"/>
+      <path d="M20 18v-2a4 4 0 0 0-4-4H4"/>
+    </symbol>
+    <symbol id="icon-note" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/>
+      <polyline points="14 3 14 9 20 9"/>
+      <line x1="8" y1="13" x2="15" y2="13"/>
+      <line x1="8" y1="17" x2="13" y2="17"/>
+    </symbol>
+    <symbol id="icon-trash" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="3 6 5 6 21 6"/>
+      <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+      <path d="M10 11v6"/>
+      <path d="M14 11v6"/>
+      <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+    </symbol>
+    <symbol id="icon-chevron-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="6 9 12 15 18 9"/>
     </symbol>
   </defs>
 </svg>
@@ -1395,6 +1841,7 @@
 
   // ---------- Real-time messaging via WebSocket ----------
   let messages = [];                 // server-sourced full history
+  let notes = [];                    // server-sourced flight notes
   const onlineUsers = new Set();
   let ws = null;
   let wsRetryTimer = null;
@@ -1406,6 +1853,16 @@
   // Mentions the user has actively picked from the popover for the next send.
   // Map<userId, name> — we only send IDs whose name still appears in the input.
   const pendingMentions = new Map();
+
+  // Notes mode: when true (and in MESSAGES state), the chat-body is replaced
+  // with the notes view. EMPTY state always shows notes. This lets the team
+  // jump between flight notes and live chat without losing context.
+  let showNotes = false;
+  // Pinned bar: collapsed by default, expandable.
+  let pinsExpanded = false;
+  // Active reply target — the message we're composing a reply to (or null).
+  // Cleared after send or when the user dismisses the preview.
+  let replyTarget = null;
 
   function updateConnUI() {
     const el = document.getElementById('conn-state');
@@ -1441,26 +1898,53 @@
       }
       if (msg.type === 'history') {
         messages = Array.isArray(msg.messages) ? msg.messages : [];
+        notes = Array.isArray(msg.notes) ? msg.notes : [];
         if (current === STATE.MESSAGES || current === STATE.EMPTY) {
-          // Switch to MESSAGES if there's history, else EMPTY
+          // Switch to MESSAGES if there's history, else EMPTY (notes view)
           const next = messages.length ? STATE.MESSAGES : STATE.EMPTY;
           if (current !== next) setState(next);
           else render();
         }
+      } else if (msg.type === 'pin') {
+        const m = messages.find((x) => x.id === msg.id);
+        if (m) {
+          m.pinned = !!msg.pinned;
+          if (msg.pinned) m.pinnedBy = msg.pinnedBy; else delete m.pinnedBy;
+          if ((current === STATE.MESSAGES) && !showNotes) refreshPinnedAndMarkers();
+        }
+      } else if (msg.type === 'note:add' && msg.note) {
+        notes.push(msg.note);
+        if (current === STATE.EMPTY || (current === STATE.MESSAGES && showNotes)) {
+          renderNotesList();
+        }
+        updateNotesCountBadge();
+      } else if (msg.type === 'note:remove') {
+        const idx = notes.findIndex((n) => n.id === msg.id);
+        if (idx >= 0) notes.splice(idx, 1);
+        if (current === STATE.EMPTY || (current === STATE.MESSAGES && showNotes)) {
+          renderNotesList();
+        }
+        updateNotesCountBadge();
       } else if (msg.type === 'message' && msg.message) {
         messages.push(msg.message);
         const fromMe = msg.message.senderId === currentUserId;
         const mentionsMe = Array.isArray(msg.message.mentions) && msg.message.mentions.includes(currentUserId);
         if (!fromMe) hapticReceived();
-        if (current === STATE.MESSAGES) {
+        if (current === STATE.MESSAGES && !showNotes) {
           // append in place
+          const list = document.getElementById('messages-list');
           const body = document.getElementById('chat-body');
-          if (body) {
+          if (list && body) {
             const wrap = document.createElement('div');
             wrap.innerHTML = renderMessageItem(msg.message);
-            body.appendChild(wrap.firstElementChild);
+            const node = wrap.firstElementChild;
+            list.appendChild(node);
+            decoratePinMarkers(node);
+            wireMessageActions(node);
             body.scrollTop = body.scrollHeight;
           }
+        } else if (current === STATE.MESSAGES && showNotes) {
+          // We're looking at notes — silent background update; nothing to render
         } else if (current === STATE.EMPTY) {
           setState(STATE.MESSAGES);
         } else if ((current === STATE.CLOSED || current === STATE.NOTIFICATION) && !fromMe) {
@@ -1780,17 +2264,130 @@
       if (trimmed.includes('@' + name)) mentions.push(uid);
     }
     if (mentions.length) payload.mentions = mentions;
+    if (replyTarget && replyTarget.id) payload.replyTo = replyTarget.id;
     ws.send(JSON.stringify(payload));
     flyPlane();
     hapticSent();
     pendingAttachment = null;
     pendingMentions.clear();
+    replyTarget = null;
     const prev = document.getElementById('composer-preview');
     if (prev) { prev.hidden = true; prev.innerHTML = ''; }
+    const replyPrev = document.getElementById('composer-reply');
+    if (replyPrev) { replyPrev.hidden = true; replyPrev.innerHTML = ''; }
     const input = document.getElementById('composer-input');
     if (input) input.value = '';
     closeMentionPopover();
     updateComposerHasContent();
+  }
+
+  // ---------- Notes / Pin / Reply helpers ----------
+  function sendNoteAdd(text) {
+    const trimmed = (text || '').trim();
+    if (!trimmed) return;
+    if (!ws || ws.readyState !== 1) return;
+    ws.send(JSON.stringify({ type: 'note:add', text: trimmed }));
+    hapticSent();
+  }
+  function sendNoteRemove(id) {
+    if (!ws || ws.readyState !== 1) return;
+    ws.send(JSON.stringify({ type: 'note:remove', id }));
+    hapticClick();
+  }
+  function sendPinToggle(id) {
+    if (!ws || ws.readyState !== 1) return;
+    ws.send(JSON.stringify({ type: 'pin', id }));
+    hapticClick();
+  }
+  function startReply(messageId) {
+    const m = messages.find((x) => x.id === messageId);
+    if (!m) return;
+    replyTarget = m;
+    hapticClick();
+    renderReplyPreview();
+    document.getElementById('composer-input')?.focus();
+  }
+  function cancelReply() {
+    replyTarget = null;
+    const replyPrev = document.getElementById('composer-reply');
+    if (replyPrev) { replyPrev.hidden = true; replyPrev.innerHTML = ''; }
+  }
+  function renderReplyPreview() {
+    const el = document.getElementById('composer-reply');
+    if (!el) return;
+    if (!replyTarget) { el.hidden = true; el.innerHTML = ''; return; }
+    const author = USER_BY_ID[replyTarget.senderId] || { name: '—' };
+    const snippet = replyTarget.text
+      ? replyTarget.text.slice(0, 80)
+      : (replyTarget.image ? 'Fotoğraf' : (replyTarget.file ? replyTarget.file.name : 'Mesaj'));
+    el.innerHTML = `
+      <span class="reply-bar" aria-hidden="true"></span>
+      <div class="reply-meta">
+        <span class="reply-label">${escapeHtml(author.name)} yanıtlanıyor</span>
+        <span class="reply-snippet">${escapeHtml(snippet)}</span>
+      </div>
+      <button type="button" class="reply-cancel" id="reply-cancel" aria-label="Yanıtı iptal et">
+        <svg><use href="#icon-x"/></svg>
+      </button>
+    `;
+    el.hidden = false;
+    document.getElementById('reply-cancel')?.addEventListener('click', cancelReply);
+  }
+  function scrollToMessage(id) {
+    const el = document.querySelector(`.message[data-id="${id}"]`);
+    if (!el) return;
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    el.classList.remove('is-flash');
+    void el.offsetWidth;
+    el.classList.add('is-flash');
+    setTimeout(() => el.classList.remove('is-flash'), 1500);
+  }
+  // After a pin update, refresh just the pinned bar + bubble markers without
+  // a full re-render (so scroll position and composer state are preserved).
+  function refreshPinnedAndMarkers() {
+    const bar = document.getElementById('pinned-bar');
+    if (bar) bar.outerHTML = renderPinnedBar();
+    // Update inline pin markers + action button states
+    messages.forEach((m) => {
+      const node = document.querySelector(`.message[data-id="${m.id}"]`);
+      if (!node) return;
+      const wrap = node.querySelector('.bubble-wrap');
+      const marker = node.querySelector('.pin-marker');
+      if (m.pinned) {
+        if (wrap) wrap.classList.add('is-pinned');
+        if (!marker && wrap) {
+          const firstBubble = wrap.querySelector('.bubble');
+          if (firstBubble) {
+            const m2 = document.createElement('span');
+            m2.className = 'pin-marker';
+            m2.setAttribute('aria-label', 'Sabitlenmiş');
+            m2.innerHTML = '<svg><use href="#icon-pin"/></svg>';
+            firstBubble.appendChild(m2);
+          }
+        }
+      } else {
+        if (wrap) wrap.classList.remove('is-pinned');
+        if (marker) marker.remove();
+      }
+      const pinBtn = node.querySelector('.msg-action-btn[data-action="pin"]');
+      if (pinBtn) pinBtn.classList.toggle('is-pinned', !!m.pinned);
+    });
+    // Re-wire pinned bar buttons since outerHTML replaced them
+    wirePinnedBar();
+  }
+  function updateNotesCountBadge() {
+    const el = document.querySelector('.notes-toggle .notes-count');
+    if (el) el.textContent = String(notes.length);
+    const toggle = document.querySelector('.notes-toggle');
+    if (toggle && notes.length === 0) {
+      const badge = toggle.querySelector('.notes-count');
+      if (badge) badge.remove();
+    } else if (toggle && !toggle.querySelector('.notes-count')) {
+      const span = document.createElement('span');
+      span.className = 'notes-count';
+      span.textContent = String(notes.length);
+      toggle.appendChild(span);
+    }
   }
 
   const root = document.getElementById('root');
@@ -1803,6 +2400,12 @@
   }
 
   function setState(next) {
+    // When entering a new top-level state, pick a sensible default view:
+    //   EMPTY    → notes (no messages exist yet — show the team's pinboard)
+    //   MESSAGES → chat (default to the live conversation, not the pinboard)
+    // The user can flip via the header toggle at any time.
+    if (next === STATE.EMPTY && current !== STATE.EMPTY) showNotes = true;
+    if (next === STATE.MESSAGES && current !== STATE.MESSAGES) showNotes = false;
     current = next;
     render();
   }
@@ -1835,35 +2438,69 @@
     `;
   }
 
-  function renderComposer() {
+  function renderComposer(opts) {
+    const notesMode = opts && opts.notes;
+    const placeholder = notesMode
+      ? 'Uçuş notu ekleyin (ekip görür)…'
+      : 'Mesajınızı yazın · @ ile bahsedin';
+    const sendLabel = notesMode ? 'Notu kaydet' : 'Gönder';
+    // In notes mode, hide the attachment plus button (notes are text-only)
+    // and skip the reply preview slot (replies are chat-only).
+    const plus = notesMode ? '' : `
+      <button type="button" class="plus" id="plus-btn" aria-label="Dosya ekle" aria-haspopup="menu" aria-expanded="false">
+        <svg class="plus-icon" aria-hidden="true"><use href="#icon-plus"/></svg>
+      </button>
+    `;
+    const menu = notesMode ? '' : `
+      <div class="composer-menu" id="composer-menu" role="menu">
+        <button type="button" class="menu-item" data-action="photo" role="menuitem">
+          <svg><use href="#icon-image"/></svg>
+          Fotoğraf
+        </button>
+        <button type="button" class="menu-item" data-action="file" role="menuitem">
+          <svg><use href="#icon-paperclip"/></svg>
+          Dosya
+        </button>
+      </div>
+    `;
+    const preview = notesMode ? '' : `<div class="composer-preview" id="composer-preview" hidden></div>`;
+    const replyPreview = notesMode ? '' : `<div class="composer-reply" id="composer-reply" hidden></div>`;
+    const mentionPop = notesMode ? '' : `<div class="mention-popover" id="mention-popover" role="listbox" aria-label="Bahsedilecek kişi"></div>`;
+    const fileInputs = notesMode ? '' : `
+      <input type="file" id="file-photo-input" accept="image/*" hidden />
+      <input type="file" id="file-doc-input" hidden />
+    `;
     return `
       <div class="composer-wrap">
-        <div class="composer-menu" id="composer-menu" role="menu">
-          <button type="button" class="menu-item" data-action="photo" role="menuitem">
-            <svg><use href="#icon-image"/></svg>
-            Fotoğraf
-          </button>
-          <button type="button" class="menu-item" data-action="file" role="menuitem">
-            <svg><use href="#icon-paperclip"/></svg>
-            Dosya
-          </button>
-        </div>
-        <div class="composer-preview" id="composer-preview" hidden></div>
-        <div class="mention-popover" id="mention-popover" role="listbox" aria-label="Bahsedilecek kişi"></div>
-        <div class="composer" id="composer">
-          <button type="button" class="plus" id="plus-btn" aria-label="Dosya ekle" aria-haspopup="menu" aria-expanded="false">
-            <svg class="plus-icon" aria-hidden="true"><use href="#icon-plus"/></svg>
-          </button>
+        ${menu}
+        ${preview}
+        ${replyPreview}
+        ${mentionPop}
+        <div class="composer${notesMode ? ' is-notes' : ''}" id="composer" data-mode="${notesMode ? 'notes' : 'chat'}">
+          ${plus}
           <div class="input-wrap">
-            <input type="text" id="composer-input" placeholder="Mesajınızı yazın · @ ile bahsedin" autocomplete="off" />
+            <input type="text" id="composer-input" placeholder="${escapeHtml(placeholder)}" autocomplete="off" maxlength="${notesMode ? 500 : 1000}" />
           </div>
-          <button class="send" id="composer-send" aria-label="Gönder">
-            <svg><use href="#icon-send"/></svg>
+          <button class="send" id="composer-send" aria-label="${sendLabel}">
+            <svg><use href="${notesMode ? '#icon-note' : '#icon-send'}"/></svg>
           </button>
-          <input type="file" id="file-photo-input" accept="image/*" hidden />
-          <input type="file" id="file-doc-input" hidden />
+          ${fileInputs}
         </div>
       </div>
+    `;
+  }
+
+  // Header pill: "Notlar (N)" toggle visible in chat panels with messages
+  function renderNotesToggle() {
+    const count = notes.length;
+    return `
+      <button type="button" class="notes-toggle" id="notes-toggle"
+              aria-pressed="${showNotes ? 'true' : 'false'}"
+              title="${showNotes ? 'Sohbete dön' : 'Uçuş notları'}">
+        <svg><use href="${showNotes ? '#icon-chat' : '#icon-note'}"/></svg>
+        ${showNotes ? 'Sohbet' : 'Notlar'}
+        ${(!showNotes && count > 0) ? `<span class="notes-count">${count}</span>` : ''}
+      </button>
     `;
   }
 
@@ -1945,30 +2582,42 @@
   }
 
   function renderEmpty() {
+    // No messages yet — empty state defaults to the notes panel, but the
+    // user can flip to chat view via the header toggle and send the first
+    // message. Sending will move us to STATE.MESSAGES automatically.
+    const notesMode = showNotes; // setState ensures this defaults to true on EMPTY entry
+    const titleIcon = notesMode ? '#icon-note' : '#icon-chat';
+    const titleText = notesMode ? 'Uçuş Notları' : 'TK2070';
+    const body = notesMode
+      ? renderNotesView()
+      : `
+        <div class="chat-body" id="chat-body">
+          <div class="empty-state">
+            <svg><use href="#icon-empty"/></svg>
+            <span>Bu uçuş için henüz görüşme başlatılmadı. İlk mesajı yazın, ekibe ulaşın.</span>
+          </div>
+        </div>
+      `;
     return `
       <div class="chat-panel">
         <div class="chat-header">
           <div>
             <div class="title-row">
-              <svg class="chat-icon"><use href="#icon-chat"/></svg>
-              <h3>TK2070</h3>
+              <svg class="chat-icon"${notesMode ? '' : ' style="color: var(--accent)"'}><use href="${titleIcon}"/></svg>
+              <h3>${titleText}</h3>
             </div>
             ${renderMembersTrigger()}
           </div>
           <span class="header-actions">
+            ${renderNotesToggle()}
             <button type="button" class="header-logout" id="header-logout" aria-label="Çıkış yap" title="Çıkış yap">
               <svg><use href="#icon-logout"/></svg>
             </button>
             <button class="close-btn" id="close-panel" aria-label="Sohbeti kapat">×</button>
           </span>
         </div>
-        <div class="chat-body">
-          <div class="empty-state">
-            <svg><use href="#icon-empty"/></svg>
-            <span>Bu uçuş için henüz görüşme başlatılmadı. İlk mesajı yazın, ekibe ulaşın.</span>
-          </div>
-        </div>
-        ${renderComposer()}
+        ${body}
+        ${renderComposer({ notes: notesMode })}
       </div>
     `;
   }
@@ -1998,6 +2647,28 @@
     return html;
   }
 
+  function renderReplyQuote(rt) {
+    if (!rt) return '';
+    const author = USER_BY_ID[rt.senderId] || { name: '—' };
+    let snippet;
+    if (rt.text && rt.text.length) {
+      snippet = escapeHtml(rt.text);
+    } else if (rt.hasImage) {
+      snippet = '<em>📷 Fotoğraf</em>';
+    } else if (rt.hasFile) {
+      snippet = `<em>📎 ${escapeHtml(rt.fileName || 'Dosya')}</em>`;
+    } else {
+      snippet = '<em>Mesaj</em>';
+    }
+    return `
+      <div class="reply-quote" data-jump="${escapeHtml(rt.id)}" role="button" tabindex="0"
+           aria-label="Yanıtlanan mesaja git">
+        <span class="rq-author">${escapeHtml(author.name)}</span>
+        <span class="rq-text">${snippet}</span>
+      </div>
+    `;
+  }
+
   function renderMessageItem(m) {
     const sender = USER_BY_ID[m.senderId] || USERS[0];
     const outgoing = m.senderId === currentUserId;
@@ -2005,8 +2676,11 @@
     const hasText = !!(m.text && m.text.length);
     const hasImage = !!m.image;
     const hasFile = !!m.file;
+    const isPinned = !!m.pinned;
 
     const parts = [];
+    // Reply quote — appears at the very top of the bubble stack
+    const replyQuoteHtml = m.replyTo ? renderReplyQuote(m.replyTo) : '';
     // Author label appears once at the top
     const authorHtml = `<div class="author">${escapeHtml(sender.name)}</div>`;
     if (hasImage) {
@@ -2034,19 +2708,40 @@
       const youMentioned = Array.isArray(m.mentions) && m.mentions.includes(currentUserId);
       const bubbleCls = `bubble${youMentioned ? ' you-mentioned' : ''}`;
       const renderedText = renderMentionsInText(m.text || '', m.mentions);
-      parts.push(`<div class="${bubbleCls}">${(!hasImage && !hasFile) ? authorHtml : ''}${renderedText}</div>`);
+      // Reply quote goes inside the same bubble so it visually attaches.
+      const innerQuote = (!hasImage && !hasFile) ? replyQuoteHtml : '';
+      parts.push(`<div class="${bubbleCls}">${innerQuote}${(!hasImage && !hasFile) ? authorHtml : ''}${renderedText}</div>`);
     }
     // Inject author into first bubble of media-only message
     let bubblesHtml = parts.join('');
     if ((hasImage || hasFile) && !hasText) {
-      // For media-only, prepend a tiny author label above the first bubble
-      bubblesHtml = `<div class="author" style="margin-bottom:4px">${escapeHtml(sender.name)}</div>` + bubblesHtml;
+      // For media-only, prepend a tiny author label + reply quote above the first bubble
+      bubblesHtml = `<div class="author" style="margin-bottom:4px">${escapeHtml(sender.name)}</div>` + replyQuoteHtml + bubblesHtml;
     }
+    // Pin marker is decorated post-render via decoratePinMarkers() so we
+    // can target the first bubble exactly without HTML manipulation.
 
+    // Inline action bar (pin + reply). Appears on hover for desktop;
+    // long-press shows .is-acting class for touch.
+    const actionsHtml = `
+      <span class="msg-actions" aria-hidden="true">
+        <button type="button" class="msg-action-btn${isPinned ? ' is-pinned' : ''}" data-action="pin"
+                aria-label="${isPinned ? 'Sabitlemeyi kaldır' : 'Sabitle'}" title="${isPinned ? 'Sabitlemeyi kaldır' : 'Sabitle'}">
+          <svg><use href="#icon-pin"/></svg>
+        </button>
+        <button type="button" class="msg-action-btn" data-action="reply" aria-label="Yanıtla" title="Yanıtla">
+          <svg><use href="#icon-reply"/></svg>
+        </button>
+      </span>
+    `;
+
+    // Pin marker is appended via JS so we can target the *first* bubble exactly.
     return `
-      <div class="message ${outgoing ? 'outgoing' : 'incoming'} ${(hasImage || hasFile) && hasText ? 'image-with-caption' : ''}">
+      <div class="message ${outgoing ? 'outgoing' : 'incoming'} ${(hasImage || hasFile) && hasText ? 'image-with-caption' : ''}"
+           data-id="${escapeHtml(m.id)}">
+        ${actionsHtml}
         <span class="avatar bubble-avatar" style="${avatarStyle}" aria-label="${escapeHtml(sender.name)}">${escapeHtml(sender.initials)}</span>
-        <div class="bubble-wrap">
+        <div class="bubble-wrap${isPinned ? ' is-pinned' : ''}">
           ${bubblesHtml}
           <div class="meta">${escapeHtml(m.time)} ${outgoing ? '<span class="check">✓✓</span>' : ''}</div>
         </div>
@@ -2054,31 +2749,248 @@
     `;
   }
 
+  // After a message item is in the DOM, decorate the first bubble with a
+  // pin-marker badge. Done as a post-step so we don't have to know in the
+  // template which bubble will be first (image vs text vs file).
+  function decoratePinMarkers(scope) {
+    const root = scope || document;
+    root.querySelectorAll('.bubble-wrap.is-pinned').forEach((wrap) => {
+      if (wrap.querySelector('.pin-marker')) return;
+      const firstBubble = wrap.querySelector('.bubble');
+      if (!firstBubble) return;
+      const marker = document.createElement('span');
+      marker.className = 'pin-marker';
+      marker.setAttribute('aria-label', 'Sabitlenmiş');
+      marker.innerHTML = '<svg><use href="#icon-pin"/></svg>';
+      firstBubble.appendChild(marker);
+    });
+  }
+
+  function renderPinnedBar() {
+    const pins = messages.filter((m) => m.pinned);
+    if (!pins.length) return '<div id="pinned-bar"></div>';
+    return `
+      <div class="pinned-bar${pinsExpanded ? ' open' : ''}" id="pinned-bar">
+        <button type="button" class="pinned-bar-head" id="pinned-toggle"
+                aria-expanded="${pinsExpanded ? 'true' : 'false'}" aria-controls="pinned-list">
+          <svg class="pin-icon"><use href="#icon-pin"/></svg>
+          <span class="pinned-count">${pins.length}</span>
+          <span>sabitlenmiş mesaj</span>
+          <svg class="chev"><use href="#icon-chevron-down"/></svg>
+        </button>
+        <div class="pinned-list" id="pinned-list" role="list">
+          ${pins.map((m) => {
+            const author = USER_BY_ID[m.senderId] || { name: '—' };
+            let preview;
+            if (m.text && m.text.length) preview = escapeHtml(m.text.slice(0, 100));
+            else if (m.image) preview = '<em>📷 Fotoğraf</em>';
+            else if (m.file) preview = `<em>📎 ${escapeHtml(m.file.name)}</em>`;
+            else preview = '<em>Mesaj</em>';
+            return `
+              <button type="button" class="pinned-item" data-jump="${escapeHtml(m.id)}" role="listitem">
+                <span class="pinned-author">${escapeHtml(author.name)}</span>
+                <span class="pinned-preview">${preview}</span>
+              </button>
+            `;
+          }).join('')}
+        </div>
+      </div>
+    `;
+  }
+
+  function renderNotesView() {
+    const intro = `
+      <div class="notes-intro">
+        <svg><use href="#icon-note"/></svg>
+        <div>
+          <strong>Uçuş notları</strong>
+          Ekip için kalıcı notlar — briefing, kapı bilgileri, özel istekler. Mesajlar gelse bile burada kalır.
+        </div>
+      </div>
+    `;
+    if (!notes.length) {
+      return `
+        <div class="notes-view" id="notes-view">
+          ${intro}
+          <div class="notes-empty">
+            <svg><use href="#icon-note"/></svg>
+            <strong>Henüz not yok</strong>
+            Aşağıdan ilk uçuş notunu ekleyin.
+          </div>
+        </div>
+      `;
+    }
+    const items = notes.map(renderNoteItem).join('');
+    return `<div class="notes-view" id="notes-view">${intro}${items}</div>`;
+  }
+
+  function renderNoteItem(n) {
+    const author = USER_BY_ID[n.authorId] || { name: '—', initials: '?', bg: '#eee', fg: '#666' };
+    const mine = n.authorId === currentUserId;
+    return `
+      <div class="note-item" data-note-id="${escapeHtml(n.id)}">
+        <div class="note-head">
+          <span class="note-avatar" style="background:${author.bg};color:${author.fg}">${escapeHtml(author.initials)}</span>
+          <span class="note-author">${escapeHtml(author.name)}</span>
+          <span class="note-time">${escapeHtml(n.time)}</span>
+          ${mine ? `
+            <button type="button" class="note-remove" data-action="remove-note" aria-label="Notu sil" title="Sil">
+              <svg><use href="#icon-trash"/></svg>
+            </button>
+          ` : ''}
+        </div>
+        <div class="note-text">${escapeHtml(n.text)}</div>
+      </div>
+    `;
+  }
+
+  // Replace just the notes list (without re-rendering the whole panel,
+  // which would steal focus from the composer).
+  function renderNotesList() {
+    const view = document.getElementById('notes-view');
+    if (!view) return;
+    const next = renderNotesView();
+    view.outerHTML = next;
+    wireNotesView();
+  }
+
   function renderMessages() {
-    const items = messages.map(renderMessageItem).join('');
+    // Header reflects whether we're viewing notes or chat
+    const titleIcon = showNotes ? '#icon-note' : '#icon-chat';
+    const titleText = showNotes ? 'Uçuş Notları' : 'TK2070';
+    const iconColor = showNotes ? '' : 'style="color: var(--accent)"';
+    const body = showNotes
+      ? renderNotesView()
+      : `
+        <div class="chat-body" id="chat-body">
+          ${renderPinnedBar()}
+          <div class="messages-list" id="messages-list">
+            ${messages.map(renderMessageItem).join('')}
+          </div>
+        </div>
+      `;
     return `
       <div class="chat-panel">
         <div class="chat-header">
           <div>
             <div class="title-row">
-              <svg class="chat-icon" style="color: var(--accent)"><use href="#icon-chat"/></svg>
-              <h3>TK2070</h3>
+              <svg class="chat-icon" ${iconColor}><use href="${titleIcon}"/></svg>
+              <h3>${titleText}</h3>
             </div>
             ${renderMembersTrigger()}
           </div>
           <span class="header-actions">
+            ${renderNotesToggle()}
             <button type="button" class="header-logout" id="header-logout" aria-label="Çıkış yap" title="Çıkış yap">
               <svg><use href="#icon-logout"/></svg>
             </button>
             <button class="close-btn" id="close-panel" aria-label="Sohbeti kapat">×</button>
           </span>
         </div>
-        <div class="chat-body" id="chat-body">
-          ${items}
-        </div>
-        ${renderComposer()}
+        ${body}
+        ${renderComposer({ notes: showNotes })}
       </div>
     `;
+  }
+
+  // ---------- Event wiring for notes / pin / reply ----------
+  function wireMessageActions(scope) {
+    const root = scope || document;
+    root.querySelectorAll('.message').forEach((node) => {
+      if (node.dataset.wired === '1') return;
+      node.dataset.wired = '1';
+      const id = node.dataset.id;
+      const pin = node.querySelector('.msg-action-btn[data-action="pin"]');
+      const reply = node.querySelector('.msg-action-btn[data-action="reply"]');
+      pin?.addEventListener('click', (e) => { e.stopPropagation(); sendPinToggle(id); });
+      reply?.addEventListener('click', (e) => { e.stopPropagation(); startReply(id); });
+
+      // Long-press to reveal actions on touch devices (matches hover on desktop)
+      let lpTimer = null;
+      node.addEventListener('touchstart', () => {
+        clearTimeout(lpTimer);
+        lpTimer = setTimeout(() => {
+          document.querySelectorAll('.message.is-acting').forEach((n) => n.classList.remove('is-acting'));
+          node.classList.add('is-acting');
+          hapticClick();
+        }, 380);
+      }, { passive: true });
+      node.addEventListener('touchend',   () => clearTimeout(lpTimer));
+      node.addEventListener('touchmove',  () => clearTimeout(lpTimer));
+      node.addEventListener('touchcancel',() => clearTimeout(lpTimer));
+
+      // Jump from reply quote inside this message → original
+      const quote = node.querySelector('.reply-quote[data-jump]');
+      if (quote) {
+        const jump = () => {
+          const targetId = quote.dataset.jump;
+          if (!messages.find((m) => m.id === targetId)) return;
+          scrollToMessage(targetId);
+          hapticClick();
+        };
+        quote.addEventListener('click', jump);
+        quote.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); jump(); }
+        });
+      }
+    });
+    // Tap outside → close any "is-acting" state on touch
+    if (!document._tapDismissWired) {
+      document._tapDismissWired = true;
+      document.addEventListener('click', (e) => {
+        if (!e.target.closest('.message')) {
+          document.querySelectorAll('.message.is-acting').forEach((n) => n.classList.remove('is-acting'));
+        }
+      });
+    }
+  }
+
+  function wirePinnedBar() {
+    const bar = document.getElementById('pinned-bar');
+    if (!bar) return;
+    const toggle = bar.querySelector('#pinned-toggle');
+    if (toggle) {
+      toggle.addEventListener('click', () => {
+        pinsExpanded = !pinsExpanded;
+        bar.classList.toggle('open', pinsExpanded);
+        toggle.setAttribute('aria-expanded', pinsExpanded ? 'true' : 'false');
+        hapticClick();
+      });
+    }
+    bar.querySelectorAll('.pinned-item').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const id = btn.dataset.jump;
+        scrollToMessage(id);
+        hapticClick();
+      });
+    });
+  }
+
+  function wireNotesView() {
+    const view = document.getElementById('notes-view');
+    if (!view) return;
+    view.querySelectorAll('[data-action="remove-note"]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const item = btn.closest('.note-item');
+        const id = item?.dataset.noteId;
+        if (!id) return;
+        if (confirm('Bu notu silmek istediğinizden emin misiniz?')) {
+          sendNoteRemove(id);
+        }
+      });
+    });
+  }
+
+  function wireNotesToggle() {
+    const btn = document.getElementById('notes-toggle');
+    if (!btn) return;
+    btn.addEventListener('click', () => {
+      showNotes = !showNotes;
+      hapticClick();
+      // Clear any active reply when switching views — replies belong to chat only
+      if (showNotes) replyTarget = null;
+      render();
+    });
   }
 
   // ---------- Easter egg ----------
@@ -2230,12 +3142,36 @@
       });
     }
 
-    // Composer (works in both EMPTY and MESSAGES states)
+    // Pin marker decoration + per-message wiring (only relevant in chat view)
+    if (current === STATE.MESSAGES && !showNotes) {
+      decoratePinMarkers();
+      wireMessageActions();
+      wirePinnedBar();
+    }
+    // Notes view wiring (notes list buttons + composer submit for notes)
+    if (current === STATE.EMPTY || (current === STATE.MESSAGES && showNotes)) {
+      wireNotesView();
+    }
+    // Notes toggle in header
+    wireNotesToggle();
+
+    // Composer (works in chat view + notes view; behavior switches on mode)
     const input = document.getElementById('composer-input');
     const sendBtn = document.getElementById('composer-send');
+    const composerEl = document.getElementById('composer');
+    const isNotesMode = composerEl && composerEl.dataset.mode === 'notes';
     if (input && sendBtn) {
       const submit = () => {
         const val = input.value;
+        if (isNotesMode) {
+          if (!val.trim()) return;
+          hapticClick();
+          sendNoteAdd(val);
+          input.value = '';
+          updateComposerHasContent();
+          input.focus();
+          return;
+        }
         if (!val.trim() && !pendingAttachment) return;
         hapticClick();
         sendMessage(val);
@@ -2245,7 +3181,7 @@
       sendBtn.addEventListener('click', submit);
       input.addEventListener('input', () => {
         updateComposerHasContent();
-        updateMentionPopover();
+        if (!isNotesMode) updateMentionPopover();
       });
       input.addEventListener('keyup', (e) => {
         // Cursor-only moves (arrows, home/end) don't fire 'input' — keep
@@ -2361,8 +3297,10 @@
 
     // If we already had a pending attachment from before re-render, restore preview
     if (pendingAttachment) showPendingPreview();
+    // Restore reply preview if a reply was in-flight before re-render
+    if (replyTarget && !isNotesMode) renderReplyPreview();
 
-    // Auto-scroll to bottom when in MESSAGES state
+    // Auto-scroll to bottom in chat view
     const body = document.getElementById('chat-body');
     if (body) body.scrollTop = body.scrollHeight;
 
